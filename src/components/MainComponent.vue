@@ -46,24 +46,26 @@
 
 <script setup>
 import { onBeforeMount, ref, reactive, computed } from "vue";
-
+// define app state variables
 const weatherData = reactive({
-  weatherMode: "CLOUDS",
-  weatherIcon: "",
+  weatherMode: "Loading...",
+  weatherIcon: "Loading...",
   coordinate: {
     lat: 40.73,
     lon: -73.93,
   },
-  temperature: 0,
-  humidity: 0,
-  wind: 0,
+  temperature: "Loading...",
+  humidity: "Loading...",
+  wind: "Loading...",
   sunrise: 0,
   sunset: 0,
-  country: "US",
-  city: "New York",
+  country: "Loading...",
+  city: "Loading...",
 });
 const temperatureType = ref("Fahrenheit"); // Fahrenheit/Celsius
 const address = computed(() => `${weatherData.city}, ${weatherData.country}`);
+
+// it's return sunrise local time from given unix UTC time
 const sunrise = computed(
   () =>
     `${new Date(weatherData.sunrise * 1000).getHours()}:${new Date(
@@ -71,6 +73,7 @@ const sunrise = computed(
     ).getMinutes()}`
 );
 
+// same as above
 const sunset = computed(
   () =>
     `${new Date(weatherData.sunset * 1000).getHours()}:${new Date(
@@ -78,8 +81,11 @@ const sunset = computed(
     ).getMinutes()}`
 );
 
+// weather mode = rain/snow/sunny/cloudy/windy
+// our api give us icon code for specific weather
+// here i just use the icon code for display related icon from static folder
+// it's return the corresponding static image name
 const dynamicWeatherIcon = computed(() => {
-  // weather mode = rain/snow/sunny/cloudy/windy
   let icon = weatherData.weatherIcon.substring(0, 2);
   let str = "";
   switch (icon) {
@@ -128,18 +134,22 @@ const getCoordinate = () => {
   navigator.geolocation.getCurrentPosition(success, error, options);
 };
 
+// if user is denied to access the location
 const getLatitudeLongitude = () => {
-  fetch(`http://www.geoplugin.net/json.gp`)
-    .then((res) => res.json())
-    .then((data) => {
-      console.log("data", data);
-      weatherData.coordinate.lat = data.geoplugin_latitude.toFixed(2);
-      weatherData.coordinate.lon = data.geoplugin_longitude.toFixed(2);
-      fetchData();
-    })
-    .catch(() => alert("Error in geoPlugin"));
+  try {
+    fetch(`http://www.geoplugin.net/json.gp`)
+      .then((res) => res.json())
+      .then((data) => {
+        weatherData.coordinate.lat = data.geoplugin_latitude.toFixed(2);
+        weatherData.coordinate.lon = data.geoplugin_longitude.toFixed(2);
+        fetchData();
+      });
+  } catch (error) {
+    alert(`Error in geoPlugin: ${error.message}`);
+  }
 };
 
+// before fetching just checking localStorage data is valid to use
 const fetchData = () => {
   if (localStorage.getItem("weatherData")) {
     const data = JSON.parse(localStorage.getItem("weatherData"));
@@ -148,9 +158,15 @@ const fetchData = () => {
       data.coordinate.lon.toFixed(2) !== weatherData.coordinate.lon ||
       new Date().getTime() - new Date(data.date).getTime() > 1800000
     ) {
+      // cross checking with localStorage
+      // if localStorage latitude & present latitude is not same
+      // or longitude longitude & present longitude is not same
+      //or last api call time & present time difference is greater than 30 minutes
+      // any one of the above conditions is true thn call the data fetch api
       getWeatherData();
     } else {
-      console.log("here in else", data);
+      // if localStorage data available & valid to use
+      // retrieve data from localStorage to reactive object
       weatherData.weatherMode = data.weatherMode;
       weatherData.weatherIcon = data.weatherIcon;
       weatherData.temperature = data.temperature;
@@ -166,37 +182,45 @@ const fetchData = () => {
   }
 };
 
+// Right now  https://darksky.net/dev/ not accepting new signup
+// Get weather data from https://api.openweathermap.org
 const getWeatherData = async () => {
-  fetch(
-    `https://api.openweathermap.org/data/2.5/weather?lat=${weatherData.coordinate.lat}&lon=${weatherData.coordinate.lon}&units=Imperial&appid=5ae1a521a60a1bbba2a698d1a3466cb6`
-  )
-    .then((response) => response.json())
-    .then((data) => {
-      weatherData.weatherMode = data.weather[0].main;
-      weatherData.weatherIcon = data.weather[0].icon;
-      weatherData.coordinate = {
-        lat: Number(data.coord.lat.toFixed(2)),
-        lon: Number(data.coord.lon.toFixed(2)),
-      };
-      weatherData.temperature = data.main.temp;
-      weatherData.humidity = data.main.humidity;
-      weatherData.wind = data.wind.speed;
-      weatherData.sunrise = data.sys.sunrise;
-      weatherData.sunset = data.sys.sunset;
-      weatherData.city = data.name;
-      weatherData.country = data.sys.country;
-      weatherData.country = countryCodeToCountryName(data.sys.country);
-      localStorage.setItem(
-        "weatherData",
-        JSON.stringify({
-          date: new Date(),
-          ...weatherData,
-        })
-      );
-    })
-    .catch((err) => alert(`ERROR IN DATA FETCHING:${err.message}`));
+  try {
+    fetch(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${weatherData.coordinate.lat}&lon=${weatherData.coordinate.lon}&units=Imperial&appid=5ae1a521a60a1bbba2a698d1a3466cb6`
+    )
+      .then((response) => response.json())
+      .then((data) => {
+        // store response data into reactive state object
+        weatherData.weatherMode = data.weather[0].main;
+        weatherData.weatherIcon = data.weather[0].icon;
+        weatherData.coordinate = {
+          lat: Number(data.coord.lat.toFixed(2)),
+          lon: Number(data.coord.lon.toFixed(2)),
+        };
+        weatherData.temperature = data.main.temp;
+        weatherData.humidity = data.main.humidity;
+        weatherData.wind = data.wind.speed;
+        weatherData.sunrise = data.sys.sunrise;
+        weatherData.sunset = data.sys.sunset;
+        weatherData.city = data.name;
+        weatherData.country = data.sys.country;
+        weatherData.country = countryCodeToCountryName(data.sys.country);
+        // save data into localStorage for future use
+        localStorage.setItem(
+          "weatherData",
+          JSON.stringify({
+            date: new Date(),
+            ...weatherData,
+          })
+        );
+      });
+  } catch (err) {
+    alert(`ERROR IN DATA FETCHING:${err.message}`);
+  }
 };
 
+// Get Full country name
 const countryCodeToCountryName = (code) => {
   const regionNamesInEnglish = new Intl.DisplayNames(["en"], {
     type: "region",
@@ -204,6 +228,7 @@ const countryCodeToCountryName = (code) => {
   return regionNamesInEnglish.of(code);
 };
 
+// convert temperature based on temperatureType
 const calculatedTemperature = () => {
   const temperature =
     temperatureType.value === "Fahrenheit"
