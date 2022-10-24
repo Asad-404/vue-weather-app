@@ -5,7 +5,7 @@
     </div>
     <div class="d-flex">
       <h3>
-        {{ calculatedTemperature() }}°
+        {{ calculatedTemperature(temperatureType, weatherData.temperature) }}°
         {{ temperatureType === "Celsius" ? "C" : "F" }} |
         {{ weatherData.weatherMode }}
       </h3>
@@ -46,6 +46,7 @@
 
 <script setup>
 import { onBeforeMount, ref, reactive, computed } from "vue";
+import { countryCodeToCountryName, calculatedTemperature } from "@/utils";
 // define app state variables
 const weatherData = reactive({
   weatherMode: "Loading...",
@@ -124,7 +125,7 @@ const getCoordinate = () => {
   };
   const error = (err) => {
     alert(`ERROR(${err.code}): ${err.message}`);
-    getLatitudeLongitude();
+    getLatLonManually();
   };
   const options = {
     enableHighAccuracy: true,
@@ -135,13 +136,17 @@ const getCoordinate = () => {
 };
 
 // if user is denied to access the location
-const getLatitudeLongitude = () => {
+const getLatLonManually = () => {
   try {
     fetch(`http://www.geoplugin.net/json.gp`)
       .then((res) => res.json())
       .then((data) => {
-        weatherData.coordinate.lat = data.geoplugin_latitude.toFixed(2);
-        weatherData.coordinate.lon = data.geoplugin_longitude.toFixed(2);
+        weatherData.coordinate.lat = parseFloat(
+          data.geoplugin_latitude
+        ).toFixed(2);
+        weatherData.coordinate.lon = parseFloat(
+          data.geoplugin_longitude
+        ).toFixed(2);
         fetchData();
       });
   } catch (error) {
@@ -161,7 +166,7 @@ const fetchData = () => {
       // cross checking with localStorage
       // if localStorage latitude & present latitude is not same
       // or longitude longitude & present longitude is not same
-      //or last api call time & present time difference is greater than 30 minutes
+      // or last api call time & present time difference is greater than 30 minutes
       // any one of the above conditions is true thn call the data fetch api
       getWeatherData();
     } else {
@@ -218,23 +223,6 @@ const getWeatherData = async () => {
   } catch (err) {
     alert(`ERROR IN DATA FETCHING:${err.message}`);
   }
-};
-
-// Get Full country name
-const countryCodeToCountryName = (code) => {
-  const regionNamesInEnglish = new Intl.DisplayNames(["en"], {
-    type: "region",
-  });
-  return regionNamesInEnglish.of(code);
-};
-
-// convert temperature based on temperatureType
-const calculatedTemperature = () => {
-  const temperature =
-    temperatureType.value === "Fahrenheit"
-      ? weatherData.temperature
-      : ((weatherData.temperature - 32) / 1.8).toFixed(1);
-  return temperature;
 };
 </script>
 
