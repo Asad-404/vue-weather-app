@@ -3,10 +3,18 @@ import MainComponent from "./components/MainComponent.vue";
 </script>
 
 <template>
-  <div>
+  <div class="container">
     <MainComponent />
   </div>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+@import "@/assets/style.scss";
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: $primary-color;
+}
 </style>
