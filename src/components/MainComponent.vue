@@ -191,7 +191,7 @@ const fetchData = () => {
 };
 
 // Right now  https://darksky.net/dev/ not accepting new signup
-// Get weather data from https://api.openweathermap.org
+// Get weather data from https://api.openweathermap.org in Imperial unit system
 const getWeatherData = async () => {
   try {
     fetch(
