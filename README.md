@@ -1,6 +1,6 @@
 # vue-weather-app
 
-## Project Setup
+## How to run
 
 ```sh
 npm install

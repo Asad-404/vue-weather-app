@@ -47,6 +47,7 @@
 <script setup>
 import { onBeforeMount, ref, reactive, computed } from "vue";
 import { countryCodeToCountryName, calculatedTemperature } from "@/utils";
+
 // define app state variables
 const weatherData = reactive({
   weatherMode: "Loading...",
@@ -74,7 +75,7 @@ const sunrise = computed(
     ).getMinutes()}`
 );
 
-// same as above
+// it's return sunset local time from given unix UTC time
 const sunset = computed(
   () =>
     `${new Date(weatherData.sunset * 1000).getHours()}:${new Date(
@@ -115,8 +116,10 @@ const dynamicWeatherIcon = computed(() => {
   return `${str}.svg`;
 });
 
+// getCoordinate before component mount in DOM
 onBeforeMount(() => getCoordinate());
 
+// get user coordinate
 const getCoordinate = () => {
   const success = (position) => {
     weatherData.coordinate.lat = position.coords.latitude.toFixed(2);
@@ -135,7 +138,7 @@ const getCoordinate = () => {
   navigator.geolocation.getCurrentPosition(success, error, options);
 };
 
-// if user is denied to access the location
+// if user is denied to access location
 const getLatLonManually = () => {
   try {
     fetch(`http://www.geoplugin.net/json.gp`)
