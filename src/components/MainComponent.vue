@@ -46,7 +46,11 @@
 
 <script setup>
 import { onBeforeMount, ref, reactive, computed } from "vue";
-import { countryCodeToCountryName, calculatedTemperature } from "@/utils";
+import {
+  extractIpAddress,
+  countryCodeToCountryName,
+  calculatedTemperature,
+} from "@/utils";
 
 // define app state variables
 const weatherData = reactive({
@@ -65,6 +69,7 @@ const weatherData = reactive({
   city: "Loading...",
 });
 const temperatureType = ref("Fahrenheit"); // Fahrenheit/Celsius
+const ipAddress = ref("0.0.0.0");
 const address = computed(() => `${weatherData.city}, ${weatherData.country}`);
 
 // it's return sunrise local time from given unix UTC time
@@ -128,7 +133,7 @@ const getCoordinate = () => {
   };
   const error = (err) => {
     alert(`ERROR(${err.code}): ${err.message}`);
-    getLatLonManually();
+    getIpAddress();
   };
   const options = {
     enableHighAccuracy: true,
@@ -139,21 +144,34 @@ const getCoordinate = () => {
 };
 
 // if user is denied to access location
-const getLatLonManually = () => {
+// get user ip address
+const getIpAddress = async () => {
   try {
-    fetch(`http://www.geoplugin.net/json.gp`)
-      .then((res) => res.json())
-      .then((data) => {
-        weatherData.coordinate.lat = parseFloat(
-          data.geoplugin_latitude
-        ).toFixed(2);
-        weatherData.coordinate.lon = parseFloat(
-          data.geoplugin_longitude
-        ).toFixed(2);
-        fetchData();
-      });
-  } catch (error) {
-    alert(`Error in geoPlugin: ${error.message}`);
+    const res = await fetch(`https://www.cloudflare.com/cdn-cgi/trace`);
+    ipAddress.value = extractIpAddress(await res.text()); // extract IP Address from the response
+    getLatLonManually();
+  } catch (err) {
+    alert(`ERROR IN getIpAddress FETCHING:${err.message}`);
+  }
+};
+
+// get user location by ip address
+const getLatLonManually = async () => {
+  try {
+    const res = await fetch(
+      `https://api.apilayer.com/ip_to_location/${ipAddress.value}`,
+      {
+        method: "GET",
+        headers: {
+          apikey: "Dy7bzi8Qh8yW2DbzHlgyU7LecZN6pGoc",
+        },
+      }
+    ).then((response) => response.json());
+    weatherData.coordinate.lat = res.latitude.toFixed(2);
+    weatherData.coordinate.lon = res.longitude.toFixed(2);
+    fetchData();
+  } catch (err) {
+    alert(`ERROR IN getLatLonManually FETCHING:${err.message}`);
   }
 };
 
